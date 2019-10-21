@@ -1,0 +1,12 @@
+env: nstep_matrix
+
+env_args:
+  steps: 1
+  good_branches: 2
+
+test_nepisode: 32
+test_interval: 1000
+log_interval: 1000
+runner_log_interval: 1000
+learner_log_interval: 1000
+t_max: 20000
