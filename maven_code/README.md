@@ -83,3 +83,16 @@ python -m pysc2.bin.play --norender --rgb_minimap_size 0 --replay NAME.SC2Replay
 ```
 
 **Note:** Replays cannot be watched using the Linux version of StarCraft II. Please use either the Mac or Windows version of the StarCraft II client.
+
+## Citation
+
+Please use the following bibtex entry for citation:
+```
+@article{mahajan2019maven,
+  title={MAVEN: Multi-Agent Variational Exploration},
+  author={Mahajan, Anuj and Rashid, Tabish and Samvelyan, Mikayel and Whiteson, Shimon},
+  journal={arXiv preprint arXiv:1910.07483},
+  year={2019}
+}
+
+```
