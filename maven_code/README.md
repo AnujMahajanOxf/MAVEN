@@ -2,7 +2,7 @@
 
 ## Note
 
-This codebase accompanies  *"MAVEN: Multi-Agent Variational Exploration"* paper submission for NeurIPS 2019.
+This codebase accompanies paper submission *"MAVEN: Multi-Agent Variational Exploration"*  accepted for NeurIPS 2019.
 
 The codebase is based on [PyMARL](https://github.com/oxwhirl/pymarl) and [SMAC](https://github.com/oxwhirl/smac) codebases which are open-sourced.
 
@@ -10,7 +10,7 @@ The codebase is based on [PyMARL](https://github.com/oxwhirl/pymarl) and [SMAC](
 
 The implementation of the novel **MAVEN** algorithm is done by the authors of the paper. Note that in the codebase MAVEN is referred to by its old name - NoiseMix. The implementation of the **QTRAN**: Learning to factorize with transformation for cooperative multi-agent reinforcement learning algorithm is done by the authors of the paper.
 
-The implementation of the following methods are part PyMARL and are *not* implemented by the authors.
+The implementation of the following methods are part of PyMARL:
 - **QMIX**: Monotonic Value Function Factorisation for Deep Multi-Agent Reinforcement Learning
 - **COMA**: Counterfactual Multi-Agent Policy Gradients
 - **VDN**: Value-Decomposition Networks For Cooperative Multi-Agent Learning
