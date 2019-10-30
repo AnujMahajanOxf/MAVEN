@@ -1,5 +1,5 @@
 # MAVEN
-Code and poster for MAVEN: Multi-Agent Variational Exploration.
+Code, poster and slides for MAVEN: Multi-Agent Variational Exploration, NeurIPS 2019.
 
 The paper can be found at https://arxiv.org/abs/1910.07483.
 
