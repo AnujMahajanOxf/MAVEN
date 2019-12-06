@@ -1,0 +1,2 @@
+'nstep_matrix__name-noisemix__epsilon_anneal_time-100__noise_dim-16__noise_bandit-True__rnn_discrim-True__mi_loss-1__epsilon_finish-0.01__entropy_scaling-0.001',
+  'nstep_matrix__name-qmix__epsilon_anneal_time-50000__noise_dim-1__noise_bandit-False__rnn_discrim-False__mi_loss-1__epsilon_finish-0.01__entropy_scaling-0.001']

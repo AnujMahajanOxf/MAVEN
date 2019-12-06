@@ -1,0 +1,3 @@
+KEY: 2_corridors__name-noisemix__epsilon_anneal_time-50000__noise_dim-16__noise_bandit-True__rnn_discrim-True__mi_loss-0.001__epsilon_finish-0.05__entropy_scaling-0.001
+KEY: 2_corridors__name-qmix__epsilon_anneal_time-50000__noise_dim-1__noise_bandit-False__rnn_discrim-NA__mi_loss-0.1__epsilon_finish-0.05__entropy_scaling-0.001
+
