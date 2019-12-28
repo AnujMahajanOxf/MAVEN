@@ -62,6 +62,8 @@ bash run.sh $GPU python3 src/main.py --config=noisemix_episode --env-config=sc2 
 
 All results will be stored in the `Results` folder.
 
+The hyperparameter configurations for camera ready can be found in the folder polt_keys. 
+
 ## Saving and loading learnt models
 
 ### Saving models
@@ -88,14 +90,11 @@ python -m pysc2.bin.play --norender --rgb_minimap_size 0 --replay NAME.SC2Replay
 
 Please use the following bibtex entry for citation:
 ```
-@incollection{NIPS2019_8978,
-title = {MAVEN: Multi-Agent Variational Exploration},
-author = {Mahajan, Anuj and Rashid, Tabish and Samvelyan, Mikayel and Whiteson, Shimon},
-booktitle = {Advances in Neural Information Processing Systems 32},
-editor = {H. Wallach and H. Larochelle and A. Beygelzimer and F. d\textquotesingle Alch\'{e}-Buc and E. Fox and R. Garnett},
-pages = {7611--7622},
-year = {2019},
-publisher = {Curran Associates, Inc.},
-url = {http://papers.nips.cc/paper/8978-maven-multi-agent-variational-exploration.pdf}
+@inproceedings{mahajan2019maven,
+  title={MAVEN: Multi-Agent Variational Exploration},
+  author={Mahajan, Anuj and Rashid, Tabish and Samvelyan, Mikayel and Whiteson, Shimon},
+  booktitle={Advances in Neural Information Processing Systems},
+  pages={7611--7622},
+  year={2019}
 }
 ```
