@@ -62,7 +62,7 @@ bash run.sh $GPU python3 src/main.py --config=noisemix_episode --env-config=sc2 
 
 All results will be stored in the `Results` folder.
 
-The hyperparameter configurations for camera ready can be found in the folder polt_keys. 
+The hyperparameter configurations for camera ready can be found in the folder plot_keys. 
 
 ## Saving and loading learnt models
 
