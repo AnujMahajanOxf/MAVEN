@@ -26,6 +26,8 @@ The authors modified the open-sourced code for StarCraft II from SMAC and added 
 
 Tested with Python 3.6.
 
+The zealot_cave maps in the paper are referred to as 3step and 4step respectively in the code.
+
 ## Installation instructions
 
 Build the Dockerfile using
