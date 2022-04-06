@@ -136,6 +136,7 @@ class SC2(MultiAgentEnv):
             os.environ['SC2PATH'] = os.path.join(os.getcwd(), "3rdparty", 'StarCraftII')
             self.game_version = args.game_version
         else:
+            # Can be derived automatically
             self.game_version = "4.6.2"
 
         # Launch the game
@@ -151,8 +152,27 @@ class SC2(MultiAgentEnv):
         self.max_distance_x = self.map_play_area_max.x - self.map_play_area_min.x
         self.max_distance_y = self.map_play_area_max.y - self.map_play_area_min.y
         self.terrain_height = np.flip(np.transpose(np.array(list(self._map_info.terrain_height.data)).reshape(self.map_x, self.map_y)), 1)
-        self.pathing_grid = np.flip(np.transpose(np.array(list(self._map_info.pathing_grid.data)).reshape(self.map_x, self.map_y)), 1)
-        if self.map_name == '2_corridors':
+        if self._map_info.pathing_grid.bits_per_pixel == 1:
+            vals = np.array(list(self._map_info.pathing_grid.data)).reshape(
+                self.map_x, int(self.map_y / 8))
+            self.pathing_grid = np.transpose(np.array([
+                [(b >> i) & 1 for b in row for i in range(7, -1, -1)]
+                for row in vals], dtype=np.bool))
+        else:
+            self.pathing_grid = np.invert(np.flip(np.transpose(np.array(
+                list(self._map_info.pathing_grid.data), dtype=np.bool).reshape(
+                    self.map_y, self.map_x)), axis=1))
+
+        #print(self.pathing_grid.shape)
+        #for x in self.pathing_grid:
+        #    string = ''
+        #    for y in x:
+        #        string += '+' if y else "-"
+        #    print(string)
+        #print(self.map_x)
+        #print(self.map_y)
+
+        if '2_corridors' in self.map_name:
             self.pathing_grid_orig = deepcopy(self.pathing_grid)
             self.corridor = 0
 
@@ -166,8 +186,20 @@ class SC2(MultiAgentEnv):
 
         self.last_stats = None
 
+        #print(" AGENT 0 ".center(60, '*'))
+        #print(self.controller.query(q_pb.RequestQuery(abilities=[q_pb.RequestQueryAvailableAbilities(unit_tag=self.agents[0].tag)])))
+        #print(" Info ".center(60, '*'))
+        #print(self.agents[1])
+        #print(" BUNKER ".center(60, '*'))
+        #print(self.bunker)
+        #print(self.controller.query(q_pb.RequestQuery(abilities=[q_pb.RequestQueryAvailableAbilities(unit_tag=self.bunker.tag)])))
+        #print(" RAW DATA ".center(60, '*'))
+        #print(self.controller.data_raw())
+        #sys.exit()
+
     def init_ally_unit_types(self, min_unit_type):
         # This should be called once from the init_units function
+
         self.stalker_id = self.sentry_id = self.zealot_id = self.colossus_id = 0
         self.marine_id = self.marauder_id= self.medivac_id = 0
         self.hydralisk_id = self.zergling_id = self.baneling_id = 0
@@ -244,6 +276,8 @@ class SC2(MultiAgentEnv):
         self.death_tracker_enemy = np.zeros(self.n_enemies)
         self.previous_agent_units = None
         self.previous_enemy_units = None
+        self.win_counted = False
+        self.defeat_counted = False
 
         self.last_action = np.zeros((self.n_agents, self.n_actions))
 
@@ -320,19 +354,47 @@ class SC2(MultiAgentEnv):
         reward = self.reward_battle()
         info = {"battle_won": False}
 
+        if self.map_type == '2step':
+            dead_zealots = [unit.tag for _, unit in self.enemies.items() if unit.unit_type == 73 and unit.health == 0]
+            if len(dead_zealots) > 0:
+                end_game = 1
+                tag = dead_zealots[0]
+                index = self.zealot_tags.index(tag)
+                if index == 0:
+                    reward += self.reward_win
+
+        elif self.map_type == '3step':
+            if self.map_name == '3step' and self.agents[0].pos.y < 20 and self.agents[1].pos.y < 20:
+                end_game = 1
+                x1 = self.agents[0].pos.x
+                x2 = self.agents[1].pos.x
+
+                if 21 < x1 < 34 and 21 < x2 < 34:
+                    reward += 0.2 * self.max_reward
+
+            if self.map_name == '4step' and self.agents[0].pos.y < 11 and self.agents[1].pos.y < 11:
+                end_game = 1
+                x1 = self.agents[0].pos.x
+                x2 = self.agents[1].pos.x
+
+                if 20 < x1 < 28 and 20 < x2 < 28:
+                    reward += 0.2 * self.max_reward
+
         if end_game is not None:
             # Battle is over
             terminated = True
             self.battles_game += 1
-            if end_game == 1:
+            if end_game == 1 and not self.win_counted:
                 self.battles_won += 1
+                self.win_counted = True
                 info["battle_won"] = True
                 if not self.reward_sparse:
                     reward += self.reward_win
                 else:
                     reward = 1
 
-            elif end_game == -1:
+            elif end_game == -1 and not self.defeat_counted:
+                self.defeat_counted = True
                 if not self.reward_sparse:
                     reward += self.reward_defeat
                 else:
@@ -560,7 +622,7 @@ class SC2(MultiAgentEnv):
 
     def unit_max_cooldown(self, agent_id):
 
-        if self.map_type in ['marines', 'bunker']:
+        if self.map_type in ['marines', 'bunker', '2step', '3step']:
             return 15
 
         unit = self.get_unit_by_id(agent_id)
@@ -596,6 +658,7 @@ class SC2(MultiAgentEnv):
             return 40
         if unit.unit_type == 4 or unit.unit_type == self.colossus_id: # Protoss's Colossus
             return 150
+        return 1
 
     def can_move(self, unit, direction):
 
@@ -610,7 +673,7 @@ class SC2(MultiAgentEnv):
         else : # west
             x, y = int(unit.pos.x - m), int(unit.pos.y)
 
-        if self.check_bounds(x, y) and self.pathing_grid[x, y] == 0:
+        if self.check_bounds(x, y) and self.pathing_grid[x, y]:
             return True
 
         return False
@@ -688,7 +751,7 @@ class SC2(MultiAgentEnv):
             move_feats_len += self.n_obs_pathing
         if self.obs_terrain_height:
             move_feats_len += self.n_obs_height
-        if self.map_name == '2_corridors':
+        if '2_corridors' in self.map_name:
             move_feats_len += 1
 
         move_feats = np.zeros(move_feats_len, dtype=np.float32) # exclude no-op & stop
@@ -715,7 +778,7 @@ class SC2(MultiAgentEnv):
             if self.obs_terrain_height:
                 move_feats[ind:] = self.get_surrounding_height(unit)
 
-            if self.map_name == '2_corridors':
+            if '2_corridors' in self.map_name:
                 move_feats[-1] = self.corridor
 
             # Enemy features
@@ -939,11 +1002,16 @@ class SC2(MultiAgentEnv):
             if self.map_type == 'sz':
                 # id(Stalker) = 74, id(Zealot) = 73
                 type_id = unit.unit_type - 73
-            if self.map_type == 'ze_ba':
+            elif self.map_type == 'ze_ba':
                 if unit.unit_type == 9:
                     type_id = 0
                 else:
                     type_id = 1
+            elif self.map_type == '2step':
+                if unit.unit_type == 73:
+                    return 0
+                else:
+                    return 1
             elif self.map_type == 'MMM':
                 if unit.unit_type == 51:
                     type_id = 0
@@ -997,7 +1065,7 @@ class SC2(MultiAgentEnv):
                         return avail_actions
 
             # see if we can move
-            if self.can_move(unit, 0):
+            if self.can_move(unit, 0) and self.map_type != '3step':
                 avail_actions[2] = 1
             if self.can_move(unit, 1):
                 avail_actions[3] = 1
@@ -1079,7 +1147,7 @@ class SC2(MultiAgentEnv):
             move_feats += self.n_obs_pathing
         if self.obs_terrain_height:
             move_feats += self.n_obs_height
-        if self.map_name == '2_corridors':
+        if '2_corridors' in self.map_name:
             move_feats += 1
 
         enemy_feats = self.n_enemies * nf_en
@@ -1128,6 +1196,11 @@ class SC2(MultiAgentEnv):
                     if self._episode_count == 1:
                         self.max_reward += unit.health_max + unit.shield_max
 
+            if self.map_type == '2step':
+                zealots = [unit for unit in self._obs.observation.raw_data.units if unit.owner == 2 and unit.unit_type == 73]
+                zealots = sorted(zealots, key=attrgetter('pos.x', 'pos.y'), reverse=False)
+                self.zealot_tags = [unit.tag for unit in zealots]
+
             if self._episode_count == 1:
                 min_unit_type = min(unit.unit_type for unit in self.agents.values())
                 self.init_ally_unit_types(min_unit_type)
@@ -1155,6 +1228,10 @@ class SC2(MultiAgentEnv):
         # Store previous state
         self.previous_agent_units = deepcopy(self.agents)
         self.previous_enemy_units = deepcopy(self.enemies)
+
+        #print('=-------------------------=')
+        #print(self._obs.observation.raw_data.units)
+        #print('=-------------------------=')
 
         if self.map_type == 'bunker' and self.bunker.health > 0:
             updated = False
@@ -1236,7 +1313,7 @@ class SC2(MultiAgentEnv):
         if (n_ally_alive > 0 and n_enemy_alive == 0) or self.only_medivac_left(ally=False):
             return 1 # win
         if n_ally_alive == 0 and n_enemy_alive == 0:
-            return 0 # tie
+            return 0 # tie, not sure if this is possible
 
         return None
 
@@ -1289,15 +1366,94 @@ class SC2(MultiAgentEnv):
         self.bunker_open = 0
 
     def open_corridor(self):
-        if self.map_name != '2_corridors':
+        if '2_corridors' not in self.map_name:
             return
         self.pathing_grid = deepcopy(self.pathing_grid_orig)
         self.corridor = 0
 
     def close_corridor(self):
-        if self.map_name != '2_corridors':
+        if '2_corridors' not in self.map_name:
             return
         for i in range(14, 20):
             self.pathing_grid[0:16, i] = [255] * 16
         self.corridor = 1
 
+    def get_agg_stats(self, stats):
+
+        current_stats = {}
+        for stat in stats:
+            for _k, _v in stat.items():
+                if not (_k in current_stats):
+                    current_stats[_k] = []
+                if _k in ["win_rate"]:
+                    continue
+                current_stats[_k].append(_v)
+
+        # average over stats
+        aggregate_stats = {}
+        for _k, _v in current_stats.items():
+            if _k in ["win_rate"]:
+                aggregate_stats[_k] = np.mean([ (_a - _b)/(_c - _d) for _a, _b, _c, _d in zip(current_stats["battles_won"],
+                                                                                              [0]*len(current_stats["battles_won"]) if self.last_stats is None else self.last_stats["battles_won"],
+                                                                                              current_stats["battles_game"],
+                                                                                              [0]*len(current_stats["battles_game"]) if self.last_stats is None else
+                                                                                              self.last_stats["battles_game"])
+                                                if (_c - _d) != 0.0])
+            else:
+                aggregate_stats[_k] = np.mean([_a-_b for _a, _b in zip(_v, [0]*len(_v) if self.last_stats is None else self.last_stats[_k])])
+
+        self.last_stats = current_stats
+        return aggregate_stats
+
+# from components.transforms_old import _seq_mean
+
+class StatsAggregator():
+
+    def __init__(self):
+        self.last_stats = None
+        self.stats = []
+        pass
+
+    def aggregate(self, stats, add_stat_fn):
+
+        current_stats = {}
+        for stat in stats:
+            for _k, _v in stat.items():
+                if not (_k in current_stats):
+                    current_stats[_k] = []
+                if _k in ["win_rate"]:
+                    continue
+                current_stats[_k].append(_v)
+
+        # average over stats
+        aggregate_stats = {}
+        for _k, _v in current_stats.items():
+            if _k in ["win_rate"]:
+                aggregate_stats[_k] = np.mean([ (_a - _b)/(_c - _d) for _a, _b, _c, _d in zip(current_stats["battles_won"],
+                                                                                              [0]*len(current_stats["battles_won"]) if self.last_stats is None else self.last_stats["battles_won"],
+                                                                                              current_stats["battles_game"],
+                                                                                              [0]*len(current_stats["battles_game"]) if self.last_stats is None else
+                                                                                              self.last_stats["battles_game"])
+                                                if (_c - _d) != 0.0])
+            else:
+                aggregate_stats[_k] = np.mean([_a-_b for _a, _b in zip(_v, [0]*len(_v) if self.last_stats is None else self.last_stats[_k])])
+
+        # add stats that have just been produced to tensorboard / sacred
+        for _k, _v in aggregate_stats.items():
+            add_stat_fn(_k, _v)
+
+        # collect stats for logging horizon
+        self.stats.append(aggregate_stats)
+        # update last stats
+        self.last_stats = current_stats
+        pass
+
+    def log(self, log_directly=False):
+        assert not log_directly, "log_directly not supported."
+        logging_str = " Win rate: {}".format(_seq_mean([ stat["win_rate"] for stat in self.stats ]))\
+                    + " Timeouts: {}".format(_seq_mean([ stat["timeouts"] for stat in self.stats ]))\
+                    + " Restarts: {}".format(_seq_mean([ stat["restarts"] for stat in self.stats ]))
+
+        # flush stats
+        self.stats = []
+        return logging_str
